@@ -189,7 +189,8 @@ const TableShoes = () => {
               <Select
                 value={selectedPlatform}
                 onChange={(e) => setSelectedPlatform(e.target.value)}
-                className="w-1/2"
+                
+                autoWidth
               >
                 <Option value="">All Platforms</Option>
                 {platforms.map((platform) => (
@@ -226,7 +227,8 @@ const TableShoes = () => {
                   setMonth("");
                   setDay("");
                 }}
-                className="w-1/4"
+                
+                autoWidth
               >
                 <Option value="">Select Year</Option>
                 {[2023, 2024].map((y) => (
@@ -263,7 +265,7 @@ const TableShoes = () => {
                   setDay("");
                 }}
                 disabled={!year}
-                className="w-1/4"
+                autoWidth
               >
                 <Option value="">Select Month</Option>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
@@ -297,7 +299,7 @@ const TableShoes = () => {
                 value={day}
                 onChange={(e) => setDay(e.target.value)}
                 disabled={!month}
-                className="w-1/2"
+                autoWidth
               >
                 <Option value="">Select Day</Option>
                 {Array.from(
@@ -357,7 +359,7 @@ const TableShoes = () => {
       {/* Table Section */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 border">
-          <thead className="bg-gray-50">
+          <thead className="bg-red-100 rounded-md">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -385,7 +387,7 @@ const TableShoes = () => {
                           size={14}
                         />
                       ) : (
-                        <ArrowUpDown className="ml-2 text-gray-400" size={14} />
+                        <ArrowUpDown className="ml-2 text-black-400" size={14} />
                       )}
                     </div>
                   </th>
