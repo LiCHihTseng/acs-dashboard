@@ -45,13 +45,27 @@ app.get('/transactionDetailTable_sellerID', (req, res) => {
         SELECT REPLACE(SUBSTRING_INDEX(sku, ',', 1), '{', '') AS shoe_model, 
                SUM(qty) AS total_quantity 
         FROM transactionDetailTable 
-        WHERE MONTH(transactionTimestamp) = MONTH(CURRENT_DATE) - 1 AND YEAR(transactionTimestamp) = YEAR(CURRENT_DATE)
+        WHERE (
+            (MONTH(CURRENT_DATE) = 1 AND MONTH(transactionTimestamp) = 12 AND YEAR(transactionTimestamp) = YEAR(CURRENT_DATE) - 1) 
+            OR 
+            (MONTH(CURRENT_DATE) != 1 AND MONTH(transactionTimestamp) = MONTH(CURRENT_DATE) - 1 AND YEAR(transactionTimestamp) = YEAR(CURRENT_DATE))
+        )
         GROUP BY shoe_model 
         ORDER BY total_quantity DESC 
         LIMIT 1;
     `;
+
     db.query(sql, (err, data) => {
         if (err) return res.json(err);
+
+        if (data.length === 0) {
+            // 返回一个默认的占位数据
+            return res.json([{
+                shoe_model: "No Data",
+                total_quantity: 0
+            }]);
+        }
+
         return res.json(data);
     });
 });
@@ -244,6 +258,40 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
     });
 });
 
+
+app.get('/transactionDetailTable_shoesTop', (req, res) => {
+    // 提取平台和 Top N 參數
+    const platform = req.query.platform; // 單一平台，例如 "Amazon"
+    const limit = parseInt(req.query.limit, 10) || 5; // 默認限制為 5
+
+    // 驗證平台是否提供
+    if (!platform) {
+        return res.status(400).json({ error: 'Platform parameter is required' });
+    }
+
+    // 動態 SQL 查詢，按單一平台查詢
+    const sql = `
+        SELECT 
+            REPLACE(SUBSTRING_INDEX(sku, ',', 1), '{', '') AS shoe_model,
+            SUM(CASE WHEN platform = '${platform}' THEN qty ELSE 0 END) AS quantity,
+            SUM(qty) AS total_quantity
+        FROM transactionDetailTable
+        WHERE platform = '${platform}' 
+        GROUP BY REPLACE(SUBSTRING_INDEX(sku, ',', 1), '{', '')
+        ORDER BY quantity DESC
+        LIMIT ${limit}; -- 使用動態的 LIMIT
+    `;
+
+    // 執行查詢
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: 'Database query failed' });
+        }
+
+        res.json(results);
+    });
+});
 
 
 // Start the Backend Server on Port 8081

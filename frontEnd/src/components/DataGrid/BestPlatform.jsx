@@ -14,6 +14,7 @@ const BestPlatform = () => {
     MomoShoppingMall: Amazon, // Replace with actual path
     amazon: Amazon, // Replace with actual path
     ebay: Amazon, // Replace with actual path
+    kickscrew:Amazon,
     // Add more mappings as needed
   };
 
@@ -48,7 +49,7 @@ const BestPlatform = () => {
             </div>
             <div>
               <img
-                src={platformImages[d.platform] || "/images/default.png"}
+                src={platformImages[d.platform] || Amazon}
                 alt={d.platform}
                 className="w-18 h-12 sm:w-12 sm:h-8 md:w-16 md:h-11 lg:w-18 lg:h-12 object-contain"
               />

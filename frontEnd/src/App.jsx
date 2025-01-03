@@ -8,6 +8,7 @@ import TotalOrder from "./components/DataGrid/TotalOrder";
 import LastDeal from "./components/DataGrid/LastDeal";
 import LineChartData from "./components/Chart/LineChartData";
 import TableShoes from "./components/Table/TableShoes";
+import  BarChartComponent from "./components/Bar/BarChartComponent";
 
 
 function App() {
@@ -27,6 +28,10 @@ function App() {
          <TableShoes/>
         </div>
       </div>
+      <div className="grid grid-cols-2">
+      <BarChartComponent className="col-span-1"/>
+      </div>
+      
       
     </div>
   );

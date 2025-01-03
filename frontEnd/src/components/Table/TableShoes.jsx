@@ -136,12 +136,10 @@ const TableShoes = () => {
       <div className="mb-4 flex justify-between">
         <h1 className="font-title font-bold ">Sale Detail</h1>
         <Button
-          id="filter-menu-button"
-          aria-controls={open ? "filter-menu" : undefined}
+          aria-controls={open ? "platform-menu" : undefined}
           aria-haspopup="true"
           aria-expanded={open ? "true" : undefined}
           onClick={handleMenuClick}
-          variant="contained"
           sx={{
             color: "black",
             backgroundColor: "white",
