@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Amazon from "../../img/amazon-logo-squid-ink-smile-orange.png";
+import Kickscrew from "../../img/Kickscrew-Logo.png";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTag } from "@fortawesome/free-solid-svg-icons";
 import "../DataGrid/DataGrid.css";
@@ -14,7 +15,7 @@ const BestPlatform = () => {
     MomoShoppingMall: Amazon, // Replace with actual path
     amazon: Amazon, // Replace with actual path
     ebay: Amazon, // Replace with actual path
-    kickscrew:Amazon,
+    kickscrew:Kickscrew,
     // Add more mappings as needed
   };
 

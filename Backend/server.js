@@ -155,7 +155,21 @@ app.get('/transactionDetailTable_dailyDetail', (req, res) => {
 });
 
 app.get('/transactionDetailTable_shoesDetail', (req, res) => {
-    const { platform, limit, offset, year, month, day, timeRange, startTime, endTime, sortBy, sortDirection } = req.query;
+    const {
+        platform,
+        limit,
+        offset,
+        startYear,
+        startMonth,
+        endYear,
+        endMonth,
+        dayStart,
+        dayEnd,
+        startTime,
+        endTime,
+        sortBy,
+        sortDirection
+    } = req.query;
 
     let sql = `
         SELECT
@@ -182,26 +196,52 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         countParams.push(platform);
     }
 
-    // 日期篩選
-    if (year) {
-        sql += ` AND YEAR(transactionTimestamp) = ?`;
-        countSql += ` AND YEAR(transactionTimestamp) = ?`;
-        queryParams.push(parseInt(year, 10));
-        countParams.push(parseInt(year, 10));
+    // 日期篩選：年份和月份範圍
+    if (startYear && startMonth && endYear && endMonth) {
+        sql += `
+            AND (
+                (YEAR(transactionTimestamp) > ? OR 
+                 (YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) >= ?))
+                AND 
+                (YEAR(transactionTimestamp) < ? OR 
+                 (YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) <= ?))
+            )
+        `;
+        countSql += `
+            AND (
+                (YEAR(transactionTimestamp) > ? OR 
+                 (YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) >= ?))
+                AND 
+                (YEAR(transactionTimestamp) < ? OR 
+                 (YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) <= ?))
+            )
+        `;
+        queryParams.push(
+            parseInt(startYear, 10),
+            parseInt(startYear, 10),
+            parseInt(startMonth, 10),
+            parseInt(endYear, 10),
+            parseInt(endYear, 10),
+            parseInt(endMonth, 10)
+        );
+        countParams.push(...queryParams);
+    } else if (startYear && startMonth) {
+        sql += `
+            AND YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) = ?
+        `;
+        countSql += `
+            AND YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) = ?
+        `;
+        queryParams.push(parseInt(startYear, 10), parseInt(startMonth, 10));
+        countParams.push(parseInt(startYear, 10), parseInt(startMonth, 10));
     }
 
-    if (month) {
-        sql += ` AND MONTH(transactionTimestamp) = ?`;
-        countSql += ` AND MONTH(transactionTimestamp) = ?`;
-        queryParams.push(parseInt(month, 10));
-        countParams.push(parseInt(month, 10));
-    }
-
-    if (day) {
-        sql += ` AND DAY(transactionTimestamp) = ?`;
-        countSql += ` AND DAY(transactionTimestamp) = ?`;
-        queryParams.push(parseInt(day, 10));
-        countParams.push(parseInt(day, 10));
+    // 日期篩選：日期範圍
+    if (dayStart && dayEnd) {
+        sql += ` AND DAY(transactionTimestamp) BETWEEN ? AND ?`;
+        countSql += ` AND DAY(transactionTimestamp) BETWEEN ? AND ?`;
+        queryParams.push(parseInt(dayStart, 10), parseInt(dayEnd, 10));
+        countParams.push(parseInt(dayStart, 10), parseInt(dayEnd, 10));
     }
 
     // 時間範圍篩選
@@ -210,15 +250,6 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         countSql += ` AND TIME(transactionTimestamp) BETWEEN ? AND ?`;
         queryParams.push(startTime, endTime);
         countParams.push(startTime, endTime);
-    }
-
-    if (timeRange) {
-        const currentTime = new Date();
-        const pastTime = new Date(currentTime.getTime() - parseInt(timeRange, 10) * 60 * 60 * 1000);
-        sql += ` AND transactionTimestamp >= ?`;
-        countSql += ` AND transactionTimestamp >= ?`;
-        queryParams.push(pastTime.toISOString().slice(0, 19).replace('T', ' '));
-        countParams.push(pastTime.toISOString().slice(0, 19).replace('T', ' '));
     }
 
     // 排序
@@ -259,6 +290,9 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
 });
 
 
+
+
+
 app.get('/transactionDetailTable_shoesTop', (req, res) => {
     // 提取平台和 Top N 參數
     const platform = req.query.platform; // 單一平台，例如 "Amazon"
@@ -293,6 +327,37 @@ app.get('/transactionDetailTable_shoesTop', (req, res) => {
     });
 });
 
+app.get('/transactionDetailTable_platformTopN', (req, res) => {
+    const { year, month, day } = req.query;
+
+    // 動態生成時間篩選條件
+    let timeFilter = "";
+    if (year) timeFilter += `AND YEAR(transactionTimestamp) = ${db.escape(year)} `;
+    if (month) timeFilter += `AND MONTH(transactionTimestamp) = ${db.escape(month)} `;
+    if (day) timeFilter += `AND DAY(transactionTimestamp) = ${db.escape(day)} `;
+
+    // SQL 查詢語句：先篩選時間，再取 Top 5 平台
+    const sql = `
+        SELECT 
+            platform,
+            SUM(qty) AS total_quantity
+        FROM transactionDetailTable
+        WHERE 1=1 ${timeFilter} -- 添加時間篩選條件
+        GROUP BY platform
+        ORDER BY total_quantity DESC
+        LIMIT 5; -- 取前 5 平台
+    `;
+
+    // 執行查詢
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ error: "Database query failed." });
+        }
+
+        res.json(results); // 返回篩選後的數據
+    });
+});
 
 // Start the Backend Server on Port 8081
 app.listen(8081, () => {
