@@ -24,6 +24,7 @@ import {
   faCalendarAlt,
   faClock,
   faListAlt,
+  faSyncAlt
 } from "@fortawesome/free-solid-svg-icons";
 
 const TableShoes = ({ setIsLoading }) => {
