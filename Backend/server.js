@@ -188,7 +188,7 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
     const queryParams = [];
     const countParams = [];
 
-    // 平台篩選
+    // **平台篩選**
     if (platform) {
         sql += ` AND platform = ?`;
         countSql += ` AND platform = ?`;
@@ -196,8 +196,15 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         countParams.push(platform);
     }
 
-    // 日期篩選：年份和月份範圍
-    if (startYear && startMonth && endYear && endMonth) {
+    // **處理 Start Year / Month / End Year / Month**
+    if (startYear && !startMonth) {
+        // **如果只選擇了 Start Year，顯示該年的所有資料**
+        sql += ` AND YEAR(transactionTimestamp) = ?`;
+        countSql += ` AND YEAR(transactionTimestamp) = ?`;
+        queryParams.push(parseInt(startYear, 10));
+        countParams.push(parseInt(startYear, 10));
+    } else if (startYear && startMonth && endYear && endMonth) {
+        // **完整的範圍選擇**
         sql += `
             AND (
                 (YEAR(transactionTimestamp) > ? OR 
@@ -226,17 +233,14 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         );
         countParams.push(...queryParams);
     } else if (startYear && startMonth) {
-        sql += `
-            AND YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) = ?
-        `;
-        countSql += `
-            AND YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) = ?
-        `;
+        // **如果 Start Year 和 Start Month 都有選擇**
+        sql += ` AND YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) = ?`;
+        countSql += ` AND YEAR(transactionTimestamp) = ? AND MONTH(transactionTimestamp) = ?`;
         queryParams.push(parseInt(startYear, 10), parseInt(startMonth, 10));
         countParams.push(parseInt(startYear, 10), parseInt(startMonth, 10));
     }
 
-    // 日期篩選：日期範圍
+    // **日期範圍篩選**
     if (dayStart && dayEnd) {
         sql += ` AND DAY(transactionTimestamp) BETWEEN ? AND ?`;
         countSql += ` AND DAY(transactionTimestamp) BETWEEN ? AND ?`;
@@ -244,7 +248,7 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         countParams.push(parseInt(dayStart, 10), parseInt(dayEnd, 10));
     }
 
-    // 時間範圍篩選
+    // **時間範圍篩選**
     if (startTime && endTime) {
         sql += ` AND TIME(transactionTimestamp) BETWEEN ? AND ?`;
         countSql += ` AND TIME(transactionTimestamp) BETWEEN ? AND ?`;
@@ -252,7 +256,7 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         countParams.push(startTime, endTime);
     }
 
-    // 排序
+    // **排序**
     if (sortBy) {
         const validColumns = ['shoe_model', 'platform', 'total_quantity', 'transactionTimestamp'];
         if (validColumns.includes(sortBy)) {
@@ -265,7 +269,7 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         sql += ` ORDER BY transactionTimestamp DESC`;
     }
 
-    // 分頁
+    // **分頁**
     if (limit) {
         sql += ` LIMIT ?`;
         queryParams.push(parseInt(limit, 10));
@@ -276,6 +280,7 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         queryParams.push(parseInt(offset, 10));
     }
 
+    // **執行查詢**
     db.query(countSql, countParams, (countErr, countResult) => {
         if (countErr) return res.status(500).json(countErr);
 
@@ -288,8 +293,6 @@ app.get('/transactionDetailTable_shoesDetail', (req, res) => {
         });
     });
 });
-
-
 
 
 

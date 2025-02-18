@@ -13,6 +13,7 @@ import {
   Select,
   MenuItem as Option,
   TextField,
+  InputAdornment,
 } from "@mui/material";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -20,9 +21,12 @@ import {
   faChevronUp,
   faChevronDown,
   faFilter,
+  faCalendarAlt,
+  faClock,
+  faListAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
-const TableShoes = () => {
+const TableShoes = ({ setIsLoading }) => {
   const [data, setData] = useState([]);
   const [platforms, setPlatforms] = useState([]);
   const [selectedPlatform, setSelectedPlatform] = useState("");
@@ -46,6 +50,9 @@ const TableShoes = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
+
+
+
   const handleMenuClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -61,6 +68,21 @@ const TableShoes = () => {
   const isDayRangeDisabled = Boolean(
     startYear && startMonth && endYear && endMonth
   );
+
+  // 动态禁用逻辑
+  const isAdditionalDisabled = Boolean(
+    startYear && startMonth && startDay && timeRange.start && timeRange.end
+  );
+  const isEndYearAndMonthRestricted = Boolean(startDay);
+
+  // 当用户填写 Start Day 时，自动同步 End Year 和 End Month
+  const handleStartDayChange = (value) => {
+    setStartDay(value);
+    if (value) {
+      setEndYear(startYear);
+      setEndMonth(startMonth);
+    }
+  };
 
   const columns = [
     { accessorKey: "shoe_model", header: "Shoe ID", enableSorting: true },
@@ -84,9 +106,10 @@ const TableShoes = () => {
       .catch((err) => console.error("Error fetching platform list:", err));
   }, []);
 
-  const fetchData = () => {
+  const fetchData = async () => {
+    setIsLoading(true); // 開始 Loading
     const offset = pageIndex * pageSize;
-
+  
     const params = new URLSearchParams({
       platform: selectedPlatform || "",
       startYear: startYear || "",
@@ -102,16 +125,19 @@ const TableShoes = () => {
       sortBy: sorting[0]?.id || "",
       sortDirection: sorting[0]?.desc ? "desc" : "asc",
     });
-
+  
     const url = `http://localhost:8081/transactionDetailTable_shoesDetail?${params.toString()}`;
-
-    fetch(url)
-      .then((res) => res.json())
-      .then(({ data, totalRecords }) => {
-        setData(data);
-        setTotalRecords(totalRecords || 0);
-      })
-      .catch((err) => console.error("Error fetching data:", err));
+  
+    try {
+      const response = await fetch(url);
+      const { data, totalRecords } = await response.json();
+      setData(data);
+      setTotalRecords(totalRecords || 0);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false); // 結束 Loading
+    }
   };
   useEffect(() => {
     fetchData();
@@ -129,6 +155,16 @@ const TableShoes = () => {
     sorting,
   ]);
 
+  useEffect(() => {
+    if (startYear) setEndYear(startYear);
+    
+  }, [startYear]);
+  useEffect(() => {
+    if (startDay && startMonth) {
+      setEndMonth(startMonth); // Automatically set End Month
+    }
+  }, [startDay, startMonth]);
+
   const table = useReactTable({
     data,
     columns,
@@ -143,11 +179,48 @@ const TableShoes = () => {
     getCoreRowModel: getCoreRowModel(),
   });
 
+  const MONTH_NAMES = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
+
+  const getFilterSummary = () => {
+    let summary = [];
+  
+    if (selectedPlatform) summary.push(`Platform: ${selectedPlatform}`);
+    if (startYear) summary.push(`Start Year: ${startYear}`);
+    if (startMonth) summary.push(`Start Month: ${MONTH_NAMES[startMonth - 1]}`);
+    if (startDay) summary.push(`Start Day: ${startDay}`);
+    if (timeRange.start || timeRange.end)
+      summary.push(
+        `Time Range: ${timeRange.start || "--:--"} to ${timeRange.end || "--:--"}`
+      );
+    if (endYear) summary.push(`End Year: ${endYear}`);
+    if (endMonth) summary.push(`End Month: ${MONTH_NAMES[endMonth - 1]}`);
+    if (endDay) summary.push(`End Day: ${endDay}`);
+  
+    return summary.join(", ");
+  };
+
   return (
     <div className="container mx-auto p-6 bg-white shadow-md rounded-md">
       {/* Filter Menu */}
       <div className="mb-4 flex justify-between">
+        <div>
         <h1 className="font-title font-bold">Sale Detail</h1>
+        <p className="text-gray-500 text-sm font-semibold">{getFilterSummary()}</p>
+        </div>
+       
         <Button
           aria-controls={open ? "platform-menu" : undefined}
           aria-haspopup="true"
@@ -171,20 +244,13 @@ const TableShoes = () => {
           anchorEl={anchorEl}
           open={open}
           onClose={handleMenuClose}
-          MenuListProps={{
-            "aria-labelledby": "filter-menu-button",
-          }}
           PaperProps={{
-            style: {
-              width: 400,
-            },
+            style: { width: 600 },
           }}
         >
           {/* Platform Filter */}
           <div className="p-4">
-            <h3 className="font-semibold text-gray-800">
-              Select Platform (Optional)
-            </h3>
+            <h3 className="font-semibold text-gray-800">Platform</h3>
             <Select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
@@ -199,18 +265,25 @@ const TableShoes = () => {
             </Select>
           </div>
 
-          {/* Start Year and Month */}
+          {/* Year, Month, Day, Time-Range */}
           <div className="p-4">
             <h3 className="font-semibold text-gray-800">
-              Select Start Year and Month
+              Year, Month, Day, Time-Range
             </h3>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 mb-4 mt-2">
               <TextField
                 label="Start Year"
                 type="number"
                 value={startYear}
                 onChange={(e) => setStartYear(e.target.value)}
                 fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                    </InputAdornment>
+                  ),
+                }}
               />
               <TextField
                 label="Start Month"
@@ -218,64 +291,30 @@ const TableShoes = () => {
                 value={startMonth}
                 onChange={(e) => setStartMonth(e.target.value)}
                 fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                    </InputAdornment>
+                  ),
+                }}
               />
-            </div>
-          </div>
-
-          {/* End Year and Month */}
-          <div className="p-4">
-            <h3 className="font-semibold text-gray-800">
-              Select End Year and Month (Optional)
-            </h3>
-            <div className="flex items-center space-x-4">
-              <TextField
-                label="End Year"
-                type="number"
-                value={endYear}
-                onChange={(e) => setEndYear(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="End Month"
-                type="number"
-                value={endMonth}
-                onChange={(e) => setEndMonth(e.target.value)}
-                fullWidth
-              />
-            </div>
-          </div>
-
-          {/* Start and End Day */}
-          <div className="p-4">
-            <h3 className="font-semibold text-gray-800">
-              Select Day Range (Optional)
-            </h3>
-            <div className="flex items-center space-x-4">
               <TextField
                 label="Start Day"
                 type="number"
                 value={startDay}
                 onChange={(e) => setStartDay(e.target.value)}
                 fullWidth
-                disabled={Boolean(endYear)}
-              />
-              <span className="text-gray-600 font-medium">to</span>
-              <TextField
-                label="End Day"
-                type="number"
-                value={endDay}
-                onChange={(e) => setEndDay(e.target.value)}
-                fullWidth
-                disabled={Boolean(endYear)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </div>
-          </div>
 
-          {/* Time Range */}
-          <div className="p-4">
-            <h3 className="font-semibold text-gray-800">
-              Select Time Range (Optional)
-            </h3>
             <div className="flex items-center space-x-4">
               <TextField
                 label="Start Time"
@@ -285,9 +324,14 @@ const TableShoes = () => {
                   setTimeRange((prev) => ({ ...prev, start: e.target.value }))
                 }
                 fullWidth
-                disabled={Boolean(endYear)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faClock} />
+                    </InputAdornment>
+                  ),
+                }}
               />
-              <span className="text-gray-600 font-medium">to</span>
               <TextField
                 label="End Time"
                 type="time"
@@ -296,21 +340,73 @@ const TableShoes = () => {
                   setTimeRange((prev) => ({ ...prev, end: e.target.value }))
                 }
                 fullWidth
-                disabled={Boolean(endYear)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faClock} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Additional Filters */}
+          <div className="p-4">
+            <h3 className="font-semibold text-gray-800">Additional Filters</h3>
+            <div className="flex items-center space-x-4 mb-4">
+            <TextField
+                label="End Year"
+                type="number"
+                value={endYear}
+                onChange={(e) => setEndYear(e.target.value)}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                    </InputAdornment>
+                  ),
+                }}
+                disabled={!!startDay} // Lock if Start Day is provided
+              />
+ <TextField
+                label="End Month"
+                type="number"
+                value={endMonth}
+                onChange={(e) => setEndMonth(e.target.value)}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                    </InputAdornment>
+                  ),
+                }}
+                disabled={!!startDay} // Lock if Start Day is provided
+              />
+            </div>
+            <div className="flex items-center space-x-4">
+              <TextField
+                label="End Day"
+                type="number"
+                value={endDay}
+                onChange={(e) => setEndDay(e.target.value)}
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <FontAwesomeIcon icon={faCalendarAlt} />
+                    </InputAdornment>
+                  ),
+                }}
               />
             </div>
           </div>
 
           {/* Confirm Button */}
           <div className="p-4 flex justify-end">
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => {
-                fetchData(); // Execute the filter query logic
-                handleMenuClose(); // Close the filter menu
-              }}
-            >
+            <Button variant="contained" color="primary" onClick={fetchData}>
               Confirm
             </Button>
           </div>
